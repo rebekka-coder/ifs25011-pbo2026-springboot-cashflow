@@ -18,9 +18,9 @@
     <description>Aplikasi web pencatat keuangan (Spring Boot + Vaadin, Clean Architecture)</description>
 
     <properties>
-    <java.version>25</java.version>
-    <vaadin.version>25.3.4</vaadin.version>
-    <jacoco.version>0.8.14</jacoco.version>
+        <java.version>25</java.version>
+        <vaadin.version>25.3.4</vaadin.version>
+        <jacoco.version>0.8.14</jacoco.version>
     </properties>
 
     <dependencyManagement>

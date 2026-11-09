@@ -45,6 +45,14 @@ public class FinanceView extends VerticalLayout {
         Transaction submit(String description, String amount) throws ValidationException;
     }
 
+    /** Teks deskripsi halaman untuk SEO (meta description). */
+    private static final String PAGE_DESCRIPTION =
+            "Aplikasi web pencatat keuangan pribadi: catat pemasukan dan pengeluaran, cari, urutkan, dan pantau saldo.";
+
+    /** Warna tombol solid dengan teks putih; rasio kontras di atas 4.5:1. */
+    private static final String INCOME_BUTTON_COLOR = "#166534";
+    private static final String EXPENSE_BUTTON_COLOR = "#B91C1C";
+
     private final FinanceUseCase financeUseCase;
     private final FinancePresenter presenter;
 
@@ -66,6 +74,7 @@ public class FinanceView extends VerticalLayout {
         setSizeFull();
         setPadding(true);
         setSpacing(true);
+        configureLandmark();
 
         configureGrid();
         configureToolbarFields();
@@ -74,34 +83,51 @@ public class FinanceView extends VerticalLayout {
         refreshAll();
     }
 
+    // ---------- Aksesibilitas & SEO ----------
+
+    /** Menjadikan seluruh isi halaman sebagai landmark utama (main) dan menambahkan meta description. */
+    private void configureLandmark() {
+        getElement().setAttribute("role", "main");
+        getElement().setAttribute("aria-label", "Catatan Keuangan");
+
+        addAttachListener(event -> event.getUI().getPage().executeJs(
+                "if (!document.querySelector('meta[name=description]')) {"
+                        + "const meta = document.createElement('meta');"
+                        + "meta.name = 'description';"
+                        + "meta.content = $0;"
+                        + "document.head.appendChild(meta);"
+                        + "}", PAGE_DESCRIPTION));
+    }
+
     // ---------- Ringkasan ----------
 
     private HorizontalLayout buildSummaryCards() {
         HorizontalLayout summary = new HorizontalLayout(
-                createSummaryCard("Jumlah Transaksi", transactionCount, "#DBEAFE", "#1D4ED8"),
-                createSummaryCard("Total Pemasukan", incomeTotal, "#DCFCE7", "#16A34A"),
-                createSummaryCard("Total Pengeluaran", expenseTotal, "#FEE2E2", "#DC2626"),
-                createSummaryCard("Saldo", balanceLabel, "#FEF3C7", "#D97706")
+                createSummaryCard("Jumlah Transaksi", transactionCount, "#DBEAFE", "#1D4ED8", "#1E3A8A"),
+                createSummaryCard("Total Pemasukan", incomeTotal, "#DCFCE7", "#16A34A", "#14532D"),
+                createSummaryCard("Total Pengeluaran", expenseTotal, "#FEE2E2", "#DC2626", "#7F1D1D"),
+                createSummaryCard("Saldo", balanceLabel, "#FEF3C7", "#D97706", "#78350F")
         );
         summary.setWidthFull();
         summary.getStyle().set("align-items", "stretch");
         return summary;
     }
 
-    private Div createSummaryCard(String label, Span value, String background, String accent) {
+    private Div createSummaryCard(String label, Span value, String background, String accent,
+                                  String textColor) {
         Span caption = new Span(label);
         caption.getStyle()
                 .set("display", "block")
                 .set("font-size", "0.875rem")
                 .set("font-weight", "500")
-                .set("color", accent);
+                .set("color", textColor);
 
         value.getStyle()
                 .set("display", "block")
                 .set("margin-top", "0.35rem")
                 .set("font-size", "1.5rem")
                 .set("font-weight", "700")
-                .set("color", accent);
+                .set("color", textColor);
 
         Div card = new Div(caption, value);
         card.getStyle()
@@ -176,14 +202,22 @@ public class FinanceView extends VerticalLayout {
 
     private Span createTypeBadge(Transaction transaction) {
         Span badge = new Span(presenter.formatType(transaction.getType()));
-        badge.getElement().getThemeList().add(transaction.isIncome() ? "badge success" : "badge error");
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "0.15rem 0.6rem")
+                .set("border-radius", "999px")
+                .set("font-size", "0.8125rem")
+                .set("font-weight", "600")
+                .set("background-color", transaction.isIncome() ? "#DCFCE7" : "#FEE2E2")
+                .set("color", transaction.isIncome() ? "#14532D" : "#7F1D1D");
         return badge;
     }
 
     private Button createDeleteButton(Transaction transaction) {
         Button button = new Button("Hapus", VaadinIcon.TRASH.create(),
                 event -> openDeleteDialog(transaction));
-        button.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.getStyle().set("color", EXPENSE_BUTTON_COLOR);
         return button;
     }
 
@@ -214,18 +248,28 @@ public class FinanceView extends VerticalLayout {
         Button incomeButton = new Button("Tambah Pemasukan", VaadinIcon.PLUS.create(),
                 event -> openAddDialog("Tambah Pemasukan",
                         financeUseCase::addIncome, presenter::showAddIncomeSuccess));
-        incomeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+        styleSolidButton(incomeButton, INCOME_BUTTON_COLOR);
 
         Button expenseButton = new Button("Tambah Pengeluaran", VaadinIcon.MINUS.create(),
                 event -> openAddDialog("Tambah Pengeluaran",
                         financeUseCase::addExpense, presenter::showAddExpenseSuccess));
-        expenseButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        styleSolidButton(expenseButton, EXPENSE_BUTTON_COLOR);
 
         HorizontalLayout toolbar = new HorizontalLayout(
                 searchField, searchButton, sortField, refreshButton, incomeButton, expenseButton);
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, searchField);
         return toolbar;
+    }
+
+    /** Memberi warna latar gelap dan teks putih agar kontras memenuhi WCAG AA (minimal 4.5:1). */
+    private void styleSolidButton(Button button, String background) {
+        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        button.getStyle()
+                .set("--vaadin-button-background", background)
+                .set("--vaadin-button-text-color", "#FFFFFF")
+                .set("background-color", background)
+                .set("color", "#FFFFFF");
     }
 
     // ---------- Dialog ----------
